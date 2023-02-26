@@ -16,7 +16,6 @@ def main():
     authentication.Authentication(SCOPES)
     config = userConfig.get_user_config()
     userConfig.save_config(config)
-    print(f"current settings: {config}")
     # todo api interactions
 
 

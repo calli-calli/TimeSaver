@@ -21,7 +21,6 @@ class Authentication:
         # If there are no (valid) credentials available, let the user log in.
         if not creds or not creds.valid:
             try:
-                print("entering try")
                 if creds and creds.expired and creds.refresh_token:
                     creds.refresh(Request())  # buggy, explanation in catch statement
                 else:
