@@ -35,11 +35,12 @@ def load_config():
     config = configparser.ConfigParser()
     config.read("config.ini")
     config_dict = _ini_to_dict(config)
+    print(f"loaded config: {config_dict}")
     return config_dict
 
 
 def save_config(config):
-    print(f"save_config: {config}")
+    print(f"save config: {config}")
     """Saves configuration as ini-file. Accepts dict type or Str in ini format"""
     if isinstance(config, dict):
         config_ini = _dict_to_ini(config)
