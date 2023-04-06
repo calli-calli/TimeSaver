@@ -9,66 +9,122 @@
 import configparser
 import os
 import os.path
+import warnings
 from datetime import datetime
 from datetime import timedelta
 
 _user_options = {"last_month": "Timesheet of last month (y/n)? ",
                  "all_day": "include 'All-Day' entries (y/n) (Wip)? ",
                  "start_date": "enter custom start-date (yymmdd): ",
-                 "end_date": "enter custom end-date (yymmdd): "}
+                 "end_date": "enter custom end-date (yymmdd): "}  # todo: Remove after gui fully implemented
 
-# todo: End unnecessary ini to dict conversion
-# In the future config.ini will have 3 Sections: "DEFAULT", "CUSTOM", and "CURRENT".
-# "DEFAULT": Never Changes. Factory Settings.
-# "CUSTOM": Last User configured Settings. Only changes if User customizes Settings.
-# "CURRENT": Overwritten every time the application runs. This Sections informs api-interactions etc.
-# All modules exclusively utilize the "DEFAULT"-Section.
-# Since the generated (and returned) dictionary type of the settings is deprecated it is not used in other modules.
+_settings_structure = {"last_month": [bool],
+                       "all_day": [bool],
+                       "start_date": [datetime],
+                       "end_date": [datetime],
+                       "cal_name": [str]}
+
+_factory_default_settings = {"last_month": True,
+                             "all_day": False,
+                             "start_date": "",
+                             "end_date": "",
+                             "cal_name": "primary"}
+
+_date_format = "%d%m%y"
 
 
-def get_default_config():
-    """Returns current default config as dict. The default config is always the config that has been used during the
-    last run. If this is the first run, a factory default is used. """
-    if os.path.exists("config.ini"):
-        config = load_config()
+def get_pref(option: str = None) -> dict:
+    """Returns validated default config. If argument is specified returns only corresponding pref"""
+    config = get_pref()
+    result = ""
+    if not option:
+        if not os.path.exists("config.ini"):
+            save_pref(_factory_default_settings)
+        config_parser = configparser.ConfigParser()
+        config_parser.read("config.ini")
+        result = _ini_to_dict(config_parser)
+        result = validate(result, fill_missing_options=True)
     else:
-        _config_default = {"last_month": True, "all_day": False, "start_date": "", "end_date": ""}
-        save_config(_config_default)
-        config = _config_default
-    return config
+        for opt in config:
+            if opt.lower() == option.lower():
+                result = {opt: config[opt]}
+        if not result:
+            warnings.warn(str(f"Requested option ('{option}') does not exist. Returning: ''."))
+    return result
 
 
-def load_config():
-    """Returns config from disk as dict"""
-    config = configparser.ConfigParser()
-    config.read("config.ini")
-    config_dict = _ini_to_dict(config)
-    # print(f"loaded config: {config_dict}")
-    return config_dict
-
-
-def save_config(config):
-    """Saves configuration as ini-file. Supports dict type or Str in ini format"""
-    if isinstance(config, dict):
-        config_ini = _dict_to_ini(config)
-    else:
-        config_ini = config
+def save_pref(options: dict):
+    """accepts dictionary. Ex: {last_mont: True}"""
+    val_options = validate(options)
+    config_ini = _dict_to_ini(val_options)
     with open("config.ini", "w") as f:
         config_ini.write(f)
 
 
-# deprecated
-# def _write_ini_to_disk(config_ini):
-#     with open("config.ini" "w") as f:
-#         config_ini.write(f)
+def get_prev_month_dates(some_day: datetime = datetime.today()) -> dict:
+    """Calculates first and last day of previous month. Return values as datetime-type (keys: start_date, last_date)"""
+    month = some_day.month
+    year = some_day.year
+    if month < 12:
+        month -= 1
+        year -= 1
+    else:
+        month = 1
+    start_date = some_day.replace(year=year, month=month, day=1, hour=0, minute=0, second=0, microsecond=0)
+    # The day 28 exists in every month. 4 days later, it's always next month
+    next_month = start_date.replace(day=28) + timedelta(days=4)
+    # subtracting the number of the current day brings us back one month
+    end_date = next_month - timedelta(days=next_month.day)
+    return {"start_date": start_date, "end_date": end_date}
+
+
+def validate(settings: dict, fill_missing_options=False):
+    """Checks settings for validity. Raises Error if invalid"""
+    valid = True
+    error_msg = []
+    valid_settings = settings.copy()
+    # adds missing options to valid_settings and sets them to default value
+    if fill_missing_options:
+        for option in _settings_structure:
+            if option not in settings.keys():
+                valid_settings[option] = _factory_default_settings[option]
+    # Checks existing keys for validity. Alter values and type if necessary
+    for option, pref in settings.items():
+        if valid and option not in _settings_structure:
+            valid = False
+            error_msg.append(f"This option is not supported: {option}")
+        if valid and option == "last_month":
+            if isinstance(pref, bool):
+                valid = True
+            else:
+                valid = False
+                error_msg.append(f"{option} must be bool, is: {type(pref)}")
+            start_date, end_date = get_prev_month_dates().values()
+            if "start_date" in settings.keys():
+                valid_settings["start_date"] = start_date
+            if "end_date" in settings.keys():
+                valid_settings["end_date"] = end_date
+        if valid and option == "all_day":
+            if not isinstance(pref, bool):
+                valid = False
+                error_msg.append(f"{option} must be bool, is: {type(pref)}")
+        if valid and (option == "start_date" or option == "end_date"):
+            if len(pref) == 6 and pref.isdigit():
+                valid_settings[option] = datetime.strptime(pref, _date_format)
+            if not isinstance(pref, datetime) and not settings["last_month"]:
+                valid = False
+                error_msg.append(f"Type or format error. Option: {option}, Pref: {pref}")
+    if not valid:
+        raise Exception("\n".join(error_msg))
+    return valid_settings
 
 
 def _dict_to_ini(config_dict):
     config = configparser.ConfigParser()
     for key in config_dict:
-        print(f"type:  {type(config_dict[key])}")
         if isinstance(config_dict[key], datetime):
-            config["DEFAULT"][key] = str(config_dict[key].isoformat()) + "Z"
+            config["DEFAULT"][key] = str(config_dict[key].isoformat())
+            warnings.warn("Should not be datetime obj, should be string")
         else:
             config["DEFAULT"][key] = str(config_dict[key])
     return config
@@ -83,56 +139,9 @@ def _ini_to_dict(config_ini):
     return config_dict
 
 
-def _prev_month(some_day: datetime):
-    """Sets month to preceding month"""
-    month = some_day.month
-    year = some_day.year
-    if month < 12:
-        month -= 1
-        year -= 1
-    else:
-        month = 1
-    return some_day.replace(year=year, month=month)
-
-
-def _last_day_of_month(some_day: datetime):
-    """Sets day to last day of given month"""
-    # The day 28 exists in every month. 4 days later, it's always next month
-    next_month = some_day.replace(day=28) + timedelta(days=4)
-    # subtracting the number of the current day brings us back one month
-    return next_month - timedelta(days=next_month.day)
-
-
-def _validate_config(config: dict):
-    """Validates settings. Sets start_date and end_date if Setting: "previous month" == True"""
-    if config["last_month"]:
-        # determines correct dates for last month's start and end date
-        start_date = _prev_month(datetime.today())
-        start_date = start_date.replace(day=1)
-        end_date = _last_day_of_month(start_date)
-
-        config["start_date"] = start_date
-        config["end_date"] = end_date
-    else:
-        # check validity of start_date and end_date
-        valid_start = len(config["start_date"]) == 6 and config["start_date"].isdigit()
-        valid_end = len(config["end_date"]) == 6 and config["end_date"].isdigit()
-        valid_order = bool(int(config["end_date"]) - int(config["start_date"]))
-        if valid_start and valid_end and valid_order:
-            start_date = datetime.strptime(config["start_date"], "%y%m%d")
-            end_date = datetime.strptime(config["end_date"], "%y%m%d")
-        else:
-            if not valid_start:
-                raise Exception("Invalid start date")
-            if not valid_end:
-                raise Exception("Invalid end date")
-            if not valid_order:
-                raise Exception("Start date must be before end date")
-    return config
-
-
 def _print_default_settings():
-    config = get_default_config()
+    """WILL BE DEPRECATED."""
+    config = get_pref()
     head = "----DEFAULT-SETTINGS----\n"
     body = ""
     foot = "------------------------\n"
@@ -147,22 +156,22 @@ def _print_default_settings():
     print(head + body + foot)
 
 
-def get_user_config():
-    """Ask user for config preferences, returns dict"""
+def ask_user_config():
+    """WILL BE DEPRECATED. Ask user for config preferences, returns dict"""
     _print_default_settings()
     default = True if input("Use default config (y/n)? ") == "y" else False
     user_config = {}
     if default:
-        user_config = get_default_config()
+        user_config = get_pref()
     else:
         user_config["last_month"] = True if input(_user_options["last_month"]) == "y" else False
         user_config["all_day"] = True if input(_user_options["all_day"]) == "y" else False
         if not user_config["last_month"]:
             user_config["start_date"] = input(_user_options["start_date"])
             user_config["end_date"] = input(_user_options["end_date"])
-    user_config = _validate_config(user_config)
+    user_config = validate(user_config)
     return user_config
 
 
 if __name__ == '__main__':
-    get_user_config()
+    ask_user_config()
