@@ -19,10 +19,10 @@ _user_options = {"last_month": "Timesheet of last month (y/n)? ",
                  "end_date": "enter custom end-date (yymmdd): "}  # todo: Remove after gui fully implemented
 
 settings_structure = {"last_month": [bool],
-                       "all_day": [bool],
-                       "start_date": [datetime],
-                       "end_date": [datetime],
-                       "cal_name": [str]}
+                      "all_day": [bool],
+                      "start_date": [datetime],
+                      "end_date": [datetime],
+                      "cal_name": [str]}
 
 _factory_default_settings = {"last_month": True,
                              "all_day": False,
@@ -99,7 +99,7 @@ def validate(settings: dict, fill_missing_options=False):
                 pref = datetime.strptime(pref, _date_format)
             elif not isinstance(pref, datetime):
                 error_msg.append(f"Type error. Type: {type(pref)} Option: {option}, Pref: {pref}")
-            if "last_month" in settings.keys() and settings["last_month"] == True:
+            if "last_month" in settings.keys() and settings["last_month"]:
                 pref = get_prev_month_dates()[option]
         valid_settings[option] = pref
     if len(error_msg):
