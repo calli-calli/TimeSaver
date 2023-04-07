@@ -13,10 +13,6 @@ import warnings
 from datetime import datetime
 from datetime import timedelta
 
-_user_options = {"last_month": "Timesheet of last month (y/n)? ",
-                 "all_day": "include 'All-Day' entries (y/n) (Wip)? ",
-                 "start_date": "enter custom start-date (yymmdd): ",
-                 "end_date": "enter custom end-date (yymmdd): "}  # todo: Remove after gui fully implemented
 
 settings_structure = {"last_month": [bool],
                       "all_day": [bool],
@@ -127,7 +123,7 @@ def _ini_to_dict(config_ini):
 
 
 def _print_default_settings():
-    """WILL BE DEPRECATED."""
+    """DEPRECATED."""
     config = get_pref()
     head = "----DEFAULT-SETTINGS----\n"
     body = ""
@@ -142,22 +138,5 @@ def _print_default_settings():
     print(head + body + foot)
 
 
-def ask_user_config():
-    """WILL BE DEPRECATED. Ask user for config preferences, returns dict"""
-    _print_default_settings()
-    default = True if input("Use default config (y/n)? ") == "y" else False
-    user_config = {}
-    if default:
-        user_config = get_pref()
-    else:
-        user_config["last_month"] = True if input(_user_options["last_month"]) == "y" else False
-        user_config["all_day"] = True if input(_user_options["all_day"]) == "y" else False
-        if not user_config["last_month"]:
-            user_config["start_date"] = input(_user_options["start_date"])
-            user_config["end_date"] = input(_user_options["end_date"])
-    user_config = validate(user_config)
-    return user_config
-
-
 if __name__ == '__main__':
-    ask_user_config()
+    pass
