@@ -18,7 +18,7 @@ _user_options = {"last_month": "Timesheet of last month (y/n)? ",
                  "start_date": "enter custom start-date (yymmdd): ",
                  "end_date": "enter custom end-date (yymmdd): "}  # todo: Remove after gui fully implemented
 
-_settings_structure = {"last_month": [bool],
+settings_structure = {"last_month": [bool],
                        "all_day": [bool],
                        "start_date": [datetime],
                        "end_date": [datetime],
@@ -35,7 +35,6 @@ _date_format = "%d%m%y"
 
 def get_pref(option: str = None) -> dict:
     """Returns validated default config. If argument is specified returns only corresponding pref"""
-    config = get_pref()
     result = ""
     if not option:
         if not os.path.exists("config.ini"):
@@ -45,9 +44,9 @@ def get_pref(option: str = None) -> dict:
         result = _ini_to_dict(config_parser)
         result = validate(result, fill_missing_options=True)
     else:
-        for opt in config:
+        for opt, value in get_pref().items():
             if opt.lower() == option.lower():
-                result = {opt: config[opt]}
+                result = {option: value}
         if not result:
             warnings.warn(str(f"Requested option ('{option}') does not exist. Returning: ''."))
     return result
@@ -62,69 +61,57 @@ def save_pref(options: dict):
 
 
 def get_prev_month_dates(some_day: datetime = datetime.today()) -> dict:
-    """Calculates first and last day of previous month. Return values as datetime-type (keys: start_date, last_date)"""
-    month = some_day.month
-    year = some_day.year
-    if month < 12:
-        month -= 1
-        year -= 1
-    else:
-        month = 1
-    start_date = some_day.replace(year=year, month=month, day=1, hour=0, minute=0, second=0, microsecond=0)
-    # The day 28 exists in every month. 4 days later, it's always next month
-    next_month = start_date.replace(day=28) + timedelta(days=4)
-    # subtracting the number of the current day brings us back one month
-    end_date = next_month - timedelta(days=next_month.day)
+    """Calculates first and last day of previous month. Return values as datetime-type (keys: start_date, end_date)"""
+    some_day = some_day.replace(hour=0, minute=0, second=0, microsecond=0)
+    end_date = some_day - timedelta(days=some_day.day)
+    start_date = end_date.replace(day=1)
     return {"start_date": start_date, "end_date": end_date}
 
 
 def validate(settings: dict, fill_missing_options=False):
     """Checks settings for validity. Raises Error if invalid"""
-    valid = True
     error_msg = []
     valid_settings = settings.copy()
     # adds missing options to valid_settings and sets them to default value
     if fill_missing_options:
-        for option in _settings_structure:
+        for option in settings_structure:
             if option not in settings.keys():
                 valid_settings[option] = _factory_default_settings[option]
     # Checks existing keys for validity. Alter values and type if necessary
     for option, pref in settings.items():
-        if valid and option not in _settings_structure:
-            valid = False
-            error_msg.append(f"This option is not supported: {option}")
-        if valid and option == "last_month":
-            if isinstance(pref, bool):
-                valid = True
-            else:
-                valid = False
-                error_msg.append(f"{option} must be bool, is: {type(pref)}")
-            start_date, end_date = get_prev_month_dates().values()
-            if "start_date" in settings.keys():
-                valid_settings["start_date"] = start_date
-            if "end_date" in settings.keys():
-                valid_settings["end_date"] = end_date
-        if valid and option == "all_day":
+        if isinstance(pref, str) and (pref == "True" or pref == "False"):  # string "True" & "False" to bool type
+            valid_settings[option] = eval(pref)
+            pref = valid_settings[option]
+        if option not in settings_structure:
+            error_msg.append(f"This option is not supported: {option}, {pref}")
+        if option == "last_month":
+            if isinstance(pref, str) and (pref == "True" or pref == "False"):
+                pref = eval(pref)
             if not isinstance(pref, bool):
-                valid = False
+                error_msg.append(f"{option} must be bool, is: {type(pref)}, {pref}")
+        if option == "all_day":
+            if not isinstance(pref, bool):
                 error_msg.append(f"{option} must be bool, is: {type(pref)}")
-        if valid and (option == "start_date" or option == "end_date"):
-            if len(pref) == 6 and pref.isdigit():
-                valid_settings[option] = datetime.strptime(pref, _date_format)
-            if not isinstance(pref, datetime) and not settings["last_month"]:
-                valid = False
-                error_msg.append(f"Type or format error. Option: {option}, Pref: {pref}")
-    if not valid:
+        if option == "start_date" or option == "end_date":
+            if len(pref) == 19:
+                pref = datetime.fromisoformat(pref)
+            elif isinstance(pref, str) and len(pref) == 6:
+                pref = datetime.strptime(pref, _date_format)
+            elif not isinstance(pref, datetime):
+                error_msg.append(f"Type error. Type: {type(pref)} Option: {option}, Pref: {pref}")
+            if "last_month" in settings.keys() and settings["last_month"] == True:
+                pref = get_prev_month_dates()[option]
+        valid_settings[option] = pref
+    if len(error_msg):
         raise Exception("\n".join(error_msg))
     return valid_settings
 
 
 def _dict_to_ini(config_dict):
     config = configparser.ConfigParser()
-    for key in config_dict:
-        if isinstance(config_dict[key], datetime):
-            config["DEFAULT"][key] = str(config_dict[key].isoformat())
-            warnings.warn("Should not be datetime obj, should be string")
+    for key, value in config_dict.items():
+        if isinstance(value, datetime):
+            config["DEFAULT"][key] = str(value.isoformat())
         else:
             config["DEFAULT"][key] = str(config_dict[key])
     return config
@@ -150,7 +137,6 @@ def _print_default_settings():
             if not (key == "start_date" or key == "end_date"):
                 body += f"{key}:\t{str(config[key])}\n"
     else:
-        print("else: all day false")
         for key in config:
             body += f"{key}:\t{str(config[key])}\n"
     print(head + body + foot)
