@@ -99,7 +99,7 @@ def validate(settings: dict, fill_missing_options=False):
                 pref = datetime.strptime(pref, _date_format)
             elif not isinstance(pref, datetime):
                 error_msg.append(f"Type error. Type: {type(pref)} Option: {option}, Pref: {pref}")
-            if "last_month" in settings.keys() and settings["last_month"]:
+            if "last_month" in settings.keys() and settings["last_month"] == "True":
                 pref = get_prev_month_dates()[option]
         valid_settings[option] = pref
     if len(error_msg):
