@@ -1,6 +1,7 @@
 import PySimpleGUI as sg
 
 import apiInteractions
+import timesheeBuilder
 import userConfig
 
 # todo block focus on sg.Combo elements
@@ -83,8 +84,9 @@ def start_gui():
                 deactivate_dependencies = False
             set_option(["start_date", "end_date"], "disabled", deactivate_dependencies)
             window["end_date"].update(disabled=deactivate_dependencies)
+        if event == "all_day":
+            config["all_day"] = False
         if event == "start_date":
-            print("event start_date")
             rollback = ""
             if "rollback_date" not in locals():
                 rollback = eval("def_" + event)
@@ -105,17 +107,14 @@ def start_gui():
                         config[key] = True if window[key].get().lower() == "previous month" else False
                     if key == "start_date" or key == "end_date":
                         config[key] = window[key].get()[0:2] + window[key].get()[3:5] + window[key].get()[6:8]
-            print(config)
             # save values as config file
             userConfig.save_pref(config)
             appointments = apiInteractions.download_appointments()
-            #  todo call timesheetBuilder
+            timesheeBuilder.build_assistant(appointments)
         if event == sg.WIN_CLOSED:
             break
-
     window.close()
 
 
 if __name__ == "__main__":
     start_gui()
-

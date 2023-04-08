@@ -7,11 +7,12 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth import exceptions
 
 
+# todo if the user doesn't have an old token, authentication will be requested twice this may happen on first run.
+#  This authentication flow had some buggy lines removed. Double check on Calendar api documentation.
 class Authentication:
-    """Authenticates program via google services. Passed scopes are used"""
+    """Authenticates program via Google services."""
 
     def __init__(self, scopes: list):
-
         creds = None
         # The file token.json stores the user's access and refresh tokens, and is
         # created automatically when the authorization flow completes for the first
@@ -30,8 +31,8 @@ class Authentication:
                 with open('token.json', 'w') as token:
                     token.write(creds.to_json())
             except exceptions.RefreshError:
-                # traceback.print_exc() Requesting a refresh may not be supported for the license this product is
-                # using. This Error is handled via the manual creation of a new token.
+                # traceback.print_exc() Requesting a refresh may not be supported because of the used license.
+                # This Error is handled via the manual creation of a new token.
                 pass
             finally:
                 flow = InstalledAppFlow.from_client_secrets_file('credentials.json', scopes)
