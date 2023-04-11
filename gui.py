@@ -14,6 +14,7 @@ def_last_month_bool = config["last_month"]
 def_last_month = "Previous month" if def_last_month_bool else "Custom"
 def_start_date = config["start_date"].strftime("%d.%m.%y")
 def_end_date = config["end_date"].strftime("%d.%m.%y")
+def_output_path = config["output_path"]
 
 # build layout
 left_column = [
@@ -21,6 +22,7 @@ left_column = [
         sg.Text("Calendar Name:"),
         sg.Combo(def_cal_name_list, default_value=def_cal_name, readonly=True, disabled=True, key="cal_name")
     ],
+    [sg.Text("Output:"), sg.Input(def_output_path, enable_events=True, key="directory"), sg.FolderBrowse()],
     [sg.Checkbox("Default Settings", default=True, enable_events=True, key="default")],
     [sg.Button("Start", size=(5, 1), key="start")]
 ]
@@ -76,6 +78,8 @@ def start_gui():
                 dependent_keys.extend(["start_date", "end_date"])
             deactivate_dependencies = True if window["default"].get() else False
             set_option(keys=dependent_keys, option="disabled", value=deactivate_dependencies)
+        if event == "directory":
+            config["output_path"] = window["directory"].get()
         if event == "last_month":  # sets "start_date" & "end_date" to read only, update their values
             if window["last_month"].get() == "Previous month":
                 set_def_values(["start_date", "end_date"])

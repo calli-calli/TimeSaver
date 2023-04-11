@@ -1,11 +1,11 @@
 # builds timesheet.csv from Calendar data
 import csv
 from datetime import timedelta
+import userConfig
 
 
 def make_pretty(events: list) -> list:
-    """expects list that contains dictionaries.
-    Adds delta to all events. temporary function"""
+    """expects list that contains dictionaries. Adds delta to all events."""
     total = timedelta()
     for count, event in enumerate(events):
         # add Start-Date & End-Date
@@ -59,7 +59,9 @@ def write_to_file(events: list):
     # footer
     footer = list(events[-1].items())
     # write to .csv file
-    with open("timesheet.csv", "w", newline="") as csvfile:
+    directory = userConfig.get_pref("output_path")['output_path']
+    directory = directory.replace("/", "\\\\") + "\\\\"
+    with open((directory + "timesheet.csv"), "w", newline="") as csvfile:
         writer = csv.writer(csvfile)
         writer.writerows(header + body + footer)
 

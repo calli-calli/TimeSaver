@@ -19,13 +19,15 @@ settings_structure = {"last_month": [bool],
                       "all_day": [bool],
                       "start_date": [datetime],
                       "end_date": [datetime],
-                      "cal_name": [str]}
+                      "cal_name": [str],
+                      "output_path": [str]}
 
 _factory_default_settings = {"last_month": True,
                              "all_day": False,
                              "start_date": "",
                              "end_date": "",
-                             "cal_name": "primary"}
+                             "cal_name": "primary",
+                             "output_path": os.getcwd()}
 
 _date_format = "%d%m%y"
 
@@ -81,6 +83,9 @@ def validate(settings: dict, fill_missing_options=False):
             pref = valid_settings[option]
         if option not in settings_structure:
             error_msg.append(f"This option is not supported: {option}, {pref}")
+        if option == "output_path":
+            if not os.path.dirname(pref):
+                error_msg = f"Not a directory: {option}, {pref}"
         if option == "last_month":
             if isinstance(pref, str) and (pref == "True" or pref == "False"):
                 pref = eval(pref)
@@ -90,14 +95,14 @@ def validate(settings: dict, fill_missing_options=False):
             if not isinstance(pref, bool):
                 error_msg.append(f"{option} must be bool, is: {type(pref)}")
         if option == "start_date" or option == "end_date":
-            if len(pref) == 19:
+            if "last_month" in settings.keys() and settings["last_month"] is True:
+                pref = get_prev_month_dates()[option]
+            elif isinstance(pref, str) and len(pref) == 19:
                 pref = datetime.fromisoformat(pref)
             elif isinstance(pref, str) and len(pref) == 6:
                 pref = datetime.strptime(pref, _date_format)
             elif not isinstance(pref, datetime):
                 error_msg.append(f"Type error. Type: {type(pref)} Option: {option}, Pref: {pref}")
-            if "last_month" in settings.keys() and settings["last_month"] == "True":
-                pref = get_prev_month_dates()[option]
         valid_settings[option] = pref
     if len(error_msg):
         raise Exception("\n".join(error_msg))

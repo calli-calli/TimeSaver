@@ -66,6 +66,7 @@ def get_calendar_names() -> list:
     for calendar in cal_raw["items"]:
         cal_names.append(calendar["summary"])
     return cal_names
+    # return["primary"]
 
 
 def convert_name_to_id(name: str) -> str:
@@ -77,7 +78,7 @@ def convert_name_to_id(name: str) -> str:
         if calendar["summary"] == name:
             cal_id = calendar["id"]
             found = True
-    if name == "primary" and not found:
+    if name != "primary" and not found:
         warnings.warn("Calendar name not found")
     return cal_id
 

@@ -1,6 +1,8 @@
 # Authentication process with Google auth services. Correct SCOPES must be passed to Authentication.
 
 import os.path
+
+import requests
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
@@ -21,26 +23,24 @@ class Authentication:
             creds = Credentials.from_authorized_user_file('token.json', scopes)
         # If there are no (valid) credentials available, let the user log in.
         if not creds or not creds.valid:
-            try:
-                if creds and creds.expired and creds.refresh_token:
-                    creds.refresh(Request())  # buggy, explanation in catch statement
-                else:
-                    flow = InstalledAppFlow.from_client_secrets_file('credentials.json', scopes)
-                    creds = flow.run_local_server(port=0)  # opens browser to get user consent
-                # Save the credentials for the next run
-                with open('token.json', 'w') as token:
-                    token.write(creds.to_json())
-            except exceptions.RefreshError:
-                # traceback.print_exc() Requesting a refresh may not be supported because of the used license.
-                # This Error is handled via the manual creation of a new token.
-                pass
-            finally:
-                flow = InstalledAppFlow.from_client_secrets_file('credentials.json', scopes)
-                creds = flow.run_local_server(port=0)  # opens browser to get user consent
-                # Save the credentials for the next run
-                with open('token.json', 'w') as token:
-                    token.write(creds.to_json())
+            if creds and creds.expired and creds.refresh_token and creds.valid:  # creds.valid is a dirty bugfix
+                creds.refresh(Request())  # google.auth.exceptions.RefreshError: ('invalid_grant: Bad Request',
+                # {'error': 'invalid_grant', 'error_description': 'Bad Request'})
+            else:
+                flow = InstalledAppFlow.from_client_secrets_file(
+                    'credentials.json', scopes)
+                creds = flow.run_local_server(port=0)
+            # Save the credentials for the next run
+            with open('token.json', 'w') as token:
+                token.write(creds.to_json())
 
 
 def get_scopes():
     return Credentials.from_authorized_user_file("token.json").scopes
+
+
+if __name__ == "__main__":
+    _scopes = ['https://www.googleapis.com/auth/calendar.readonly']
+    Authentication(scopes=_scopes)
+
+
