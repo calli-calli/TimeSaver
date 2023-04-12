@@ -4,7 +4,7 @@ from datetime import timedelta
 import userConfig
 
 
-def make_pretty(events: list) -> list:
+def _make_pretty(events: list) -> list:
     """expects list that contains dictionaries. Adds delta to all events."""
     total = timedelta()
     for count, event in enumerate(events):
@@ -28,7 +28,7 @@ def make_pretty(events: list) -> list:
     return events
 
 
-def write_to_file(events: list):
+def _write_to_file(events: list):
     # todo add arguments for flexibility. I.e. Show/don't show value
     # csv in this order. Structure: [[key for value: str, bool, column_name: str]]
     order = [["start", False, "Start"],
@@ -44,17 +44,16 @@ def write_to_file(events: list):
     # header
     header = [["SEP=,"]]
     headings = []
-    for a in order:
-        if a[1]:
-            headings.append(a[2])
+    [headings.append(a[2]) for a in order if a[1]]
     header.append(headings)
     # body
     body = []
     for event in events:
-        line = []
-        for i, o in enumerate(order):
-            if order[i][1] and o[0] in event.keys():
-                line.append(event[o[0]])
+        line = [event[o[i]] for i, o in enumerate(order) if order[i][1]]
+        # [line.append() for i, o in enumerate(order) if order[i][1]]
+        # for i, o in enumerate(order):
+        #     if order[i][1] and o[0] in event.keys():
+        #         line.append(event[o[0]])
         body.append(line[:])
     # footer
     footer = list(events[-1].items())
@@ -67,8 +66,9 @@ def write_to_file(events: list):
 
 
 def build_assistant(events: list):
-    mod_events = make_pretty(events)
-    write_to_file(mod_events)
+    """Makes the events pretty and writes them to a *.csv file"""
+    mod_events = _make_pretty(events)
+    _write_to_file(mod_events)
 
 
 if __name__ == '__main__':

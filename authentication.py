@@ -23,7 +23,7 @@ class Authentication:
             creds = Credentials.from_authorized_user_file('token.json', scopes)
         # If there are no (valid) credentials available, let the user log in.
         if not creds or not creds.valid:
-            if creds and creds.expired and creds.refresh_token and creds.valid:  # creds.valid is a dirty bugfix
+            if creds and creds.expired and creds.refresh_token and creds.valid:  # creds.valid  # dirty bugfix
                 creds.refresh(Request())  # google.auth.exceptions.RefreshError: ('invalid_grant: Bad Request',
                 # {'error': 'invalid_grant', 'error_description': 'Bad Request'})
             else:
