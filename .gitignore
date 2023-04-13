@@ -4,8 +4,13 @@ token.json
 # configs
 config.ini
 
-# misc
+# testing
 test.py
+expired_token.json
+
+# misc
+cover.png
+timesheet.csv
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
