@@ -49,18 +49,18 @@ def _write_to_file(events: list):
     # body
     body = []
     for event in events:
-        line = [event[o[i]] for i, o in enumerate(order) if order[i][1]]
+        line = []
+        # line = [event[o[i]] for i, o in enumerate(order) if order[i][1]]
         # [line.append() for i, o in enumerate(order) if order[i][1]]
-        # for i, o in enumerate(order):
-        #     if order[i][1] and o[0] in event.keys():
-        #         line.append(event[o[0]])
+        for i, o in enumerate(order):
+            if order[i][1] and o[0] in event.keys():
+                line.append(event[o[0]])
         body.append(line[:])
     # footer
     footer = list(events[-1].items())
     # write to .csv file
-    directory = userConfig.get_pref("output_path")['output_path']
-    directory = directory.replace("/", "\\\\") + "\\\\"
-    with open((directory + "timesheet.csv"), "w", newline="") as csvfile:
+    file_path = userConfig.get_pref("output_path")['output_path'] + "/" + "timesheet.csv"
+    with open(file_path, "w", newline="") as csvfile:
         writer = csv.writer(csvfile)
         writer.writerows(header + body + footer)
 
