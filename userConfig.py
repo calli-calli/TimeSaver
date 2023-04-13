@@ -13,7 +13,6 @@ import warnings
 from datetime import datetime
 from datetime import timedelta
 
-# todo add output directory to settings, output csv accordingly
 
 settings_structure = {"last_month": [bool],
                       "all_day": [bool],

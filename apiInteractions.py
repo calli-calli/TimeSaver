@@ -59,6 +59,8 @@ def download_appointments() -> list:
     return events
 
 
+# test comment
+
 def get_calendar_names() -> list:
     """Downloads all available calendar names"""
     cal_names = []
