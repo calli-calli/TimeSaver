@@ -2,11 +2,9 @@
 
 import os.path
 
-import requests
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
-from google.auth import exceptions
 
 
 # todo if the user doesn't have an old token, authentication will be requested twice this may happen on first run.
@@ -42,5 +40,3 @@ def get_scopes():
 if __name__ == "__main__":
     _scopes = ['https://www.googleapis.com/auth/calendar.readonly']
     Authentication(scopes=_scopes)
-
-
