@@ -1,124 +1,180 @@
-import PySimpleGUI as sg
-
+from kivy.app import App
+from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.gridlayout import GridLayout
+from kivy.uix.label import Label
+from kivy.uix.image import Image
+from kivy.uix.button import Button
+from kivy.uix.textinput import TextInput
+from kivy.uix.togglebutton import ToggleButton
+from kivy.uix.switch import Switch
+from kivy.uix.filechooser import FileChooserListView
+from kivy.uix.checkbox import CheckBox
+from kivy.uix.dropdown import DropDown
+from kivy.uix.spinner import Spinner
+from kivy.uix.floatlayout import FloatLayout
+from kivy.factory import Factory
+from kivy.properties import ObjectProperty
+from kivy.uix.popup import Popup
 import apiInteractions
 import timesheeBuilder
 import userConfig
 
-# todo block focus on sg.Combo elements
-sg.theme("DarkGray2")
-config = userConfig.get_pref()
-def_cal_name = config["cal_name"]
-def_cal_name_list = apiInteractions.get_calendar_names()
-def_all_day = config["all_day"]
-def_last_month_bool = config["last_month"]
-def_last_month = "Previous month" if def_last_month_bool else "Custom"
-def_start_date = config["start_date"].strftime("%d.%m.%y")
-def_end_date = config["end_date"].strftime("%d.%m.%y")
-def_output_path = config["output_path"]
-
-# build layout
-left_column = [
-    [
-        sg.Text("Calendar Name:"),
-        sg.Combo(def_cal_name_list, default_value=def_cal_name, readonly=True, disabled=True, key="cal_name")
-    ],
-    [sg.Text("Output:"), sg.Input(def_output_path, enable_events=True, key="directory"), sg.FolderBrowse()],
-    [sg.Checkbox("Default Settings", default=True, enable_events=True, key="default")],
-    [sg.Button("Start", size=(5, 1), key="start")]
-]
-right_column = [
-    [sg.Combo(["Previous month", "Custom"], default_value=def_last_month, enable_events=True, disabled=True,
-              readonly=True, key="last_month")],
-    [sg.Checkbox("Full day entries", default=def_all_day, disabled=True, key="all_day")],
-    [sg.Text("Start"), sg.Input(def_start_date, size=(8, 1), disabled=True, enable_events=True, key="start_date")],
-    [sg.Text("End "), sg.Input(def_end_date, size=(8, 1), disabled=True, enable_events=True, key="end_date")]
-]
-layout = [
-    [
-        sg.Column(left_column),
-        sg.VSeperator(),
-        sg.Column(right_column)
-    ]
-]
-# build window
-window = sg.Window(title="Timesheet from calendar", layout=layout)
+# todo align some both widgets closer together. Read on Layouts in doc
 
 
-def set_def_values(keys: list):
-    """sets window elements to default values"""
-    for k in keys:
-        window[k].update(eval("def_" + k))
+class CalendarName(GridLayout):
+    def __init__(self, **kwargs):
+        super(CalendarName, self).__init__(**kwargs)
+        self.cols = 2
+        self.add_widget(Label(text="Calendar Name:"))
+        calendar_name = Spinner(
+            text='Home',  # default value shown
+            values=('Home', 'Work', 'Other', 'Custom'),  # available values
+            # positioning
+            # size_hint=(None, None),
+            # size=(100, 44),
+            # height=44,
+            pos_hint={'center_x': .5, 'center_y': .5}, )
+
+        def show_selected_value(spinner, text):
+            print('The spinner', spinner, 'has text', text)
+
+        calendar_name.bind(text=show_selected_value)
+        self.add_widget(calendar_name)
 
 
-def set_option(keys: list, option: str, value: bool):
-    """Sets window option to passed value"""
-    for k in keys:
-        window[k].update(**{option: value})
+class Default(BoxLayout):
+    def __init__(self, **kwargs):
+        super(Default, self).__init__(**kwargs)
+        self.orientation = "horizontal"
+        self.add_widget(Switch(active=True))
+        self.add_widget(Label(text="Default"))
 
 
-def validate_format(test_date: str, rollback_date: str = "01.01.23") -> str:
-    """validates and formats date (xx.xx.xx)"""
-    test_date = test_date.replace(".", "")
-    if test_date.isdigit() or test_date == "":
-        n = 2
-        segments = [test_date[i:i + n] for i in range(0, len(test_date), n)]
-        result = ".".join(segments)
-    else:
-        result = rollback_date
-    return result
+class Start(BoxLayout):
+    def __init__(self, **kwargs):
+        super(Start, self).__init__(**kwargs)
+        self.add_widget(Button(text="Start"))
 
 
-def start_gui():
-    """Opens window, shows GUI, runs UI logic"""
-    while True:
-        event, values = window.read()
-        if event == "default":  # sets relevant options to read only, update all preferences
-            dependent_keys = ["all_day", "last_month", "cal_name", "all_day"]
-            if not window["last_month"].get() == "Previous month":
-                dependent_keys.extend(["start_date", "end_date"])
-            deactivate_dependencies = True if window["default"].get() else False
-            set_option(keys=dependent_keys, option="disabled", value=deactivate_dependencies)
-        if event == "directory":
-            config["output_path"] = window["directory"].get()
-        if event == "last_month":  # sets "start_date" & "end_date" to read only, update their values
-            if window["last_month"].get() == "Previous month":
-                set_def_values(["start_date", "end_date"])
-                deactivate_dependencies = True
-            else:
-                deactivate_dependencies = False
-            set_option(["start_date", "end_date"], "disabled", deactivate_dependencies)
-            window["end_date"].update(disabled=deactivate_dependencies)
-        if event == "all_day":
-            config["all_day"] = False
-        if event == "start_date":
-            rollback = ""
-            if "rollback_date" not in locals():
-                rollback = eval("def_" + event)
-            window[event].update(validate_format(test_date=window[event].get(), rollback_date=rollback))
-            rollback = window[event].get()  # save input for later
-        if event == "end_date":
-            rollback = ""
-            if "rollback_date" not in locals():
-                rollback = eval("def_" + event)
-            window[event].update(validate_format(test_date=window[event].get(), rollback_date=rollback))
-            rollback = window[event].get()  # save input for later
-        if event == "start":  # download events, create timesheet, save current settings
-            # get values from interface
-            for key in window.key_dict:
-                if key in userConfig.settings_structure.keys():
-                    config[key] = window[key].get()
-                    if key == "last_month":
-                        config[key] = True if window[key].get().lower() == "previous month" else False
-                    if key == "start_date" or key == "end_date":
-                        config[key] = window[key].get()[0:2] + window[key].get()[3:5] + window[key].get()[6:8]
-            # save values as config file
-            userConfig.save_pref(config)
-            appointments = apiInteractions.download_appointments()
-            timesheeBuilder.build_assistant(appointments)
-        if event == sg.WIN_CLOSED:
-            break
-    window.close()
+class OutputDir(BoxLayout):
+    def __init__(self, **kwargs):
+        super(OutputDir, self).__init__(**kwargs)
+        self.orientation = "horizontal"
+        # self.option = Label(text="Output Dir:")
+        # self.add_widget(self.option)
+        self.load = Button(text="Output Path")
+        # self.load.bind(on_release=self.show_load)
+        self.add_widget(self.load)
+        # todo make popup window containing: FileChooserListView, Button("Cancel), Button("Save").
+        #  Text on Button("Load") depends on chosen path i.e.: f"Output: {dir}"
+
+
+class DatePreset(GridLayout):
+    def __init__(self, **kwargs):
+        super(DatePreset, self).__init__(**kwargs)
+        self.cols = 2
+        last_month = ToggleButton(text="Last Month", group="date_preset", state="down")
+        custom = ToggleButton(text="Custom", group="date_preset")
+        self.add_widget(last_month)
+        self.add_widget(custom)
+        pass
+
+
+class FullDay(BoxLayout):
+    def __init__(self, **kwargs):
+        super(FullDay, self).__init__(**kwargs)
+        self.full_day = Switch(active=False)
+        self.add_widget(self.full_day)
+        self.add_widget(Label(text="Full Day Entries"))
+
+
+class Dates(GridLayout):
+    def __init__(self, **kwargs):
+        super(Dates, self).__init__(**kwargs)
+        self.cols = 2
+        self.add_widget(Label(text="Start Date"))
+        self.start_input = TextInput()
+        self.add_widget(self.start_input)
+        self.add_widget(Label(text="Start Date"))
+        self.end_input = TextInput()
+        self.add_widget(self.end_input)
+
+
+class Header(BoxLayout):
+    def __init__(self, **kwargs):
+        super(Header, self).__init__(**kwargs)
+        self.orientation = "vertical"
+        self.add_widget(CalendarName())
+        self.add_widget(Default())
+        self.add_widget(Start())
+
+
+class Options(BoxLayout):
+    def __init__(self, **kwargs):
+        super(Options, self).__init__(**kwargs)
+        self.orientation = "vertical"
+        self.add_widget(OutputDir())
+        self.add_widget(DatePreset())
+        self.add_widget(FullDay())
+        self.add_widget(Dates())
+
+
+class FullLayout(GridLayout):
+    def __init__(self, **kwargs):
+        super(FullLayout, self).__init__(**kwargs)
+        self.cols = 1
+        self.add_widget(Header())
+        self.add_widget(Options())
+
+
+class TimeSaverApp(App):
+    def build(self):
+        return FullLayout()
+
+
+# testing
+class SayHello(App):
+    def build(self):
+        self.window = GridLayout()
+        self.window.cols = 1
+        self.window.size_hint = (0.6, 0.7)
+        self.window.pos_hint = {"center_x": 0.5, "center_y": 0.5}
+
+        # add widget to window
+        # image widget
+        self.window.add_widget(Image(source="cover.png"))
+        # label widget
+        self.greeting = Label(
+            text="What's your name",
+            font_size=18,
+            color="#00FFCE"
+        )
+        self.window.add_widget(self.greeting)
+        # user text input
+        self.user = TextInput(
+            multiline=False,
+            padding_y=(20, 20),
+            size_hint=(1, 0.5),
+            on_text_validate=self.callback
+        )
+
+        self.window.add_widget(self.user)
+        # button widget
+        self.button = Button(
+            text="Greet",
+            size_hint=(1, 0.5),
+            bold=True,
+            background_color="#00FFCE"
+        )
+        self.button.bind(on_press=self.callback)
+        self.window.add_widget(self.button)
+
+        return self.window
+
+    def callback(self, instance):
+        self.greeting.text = "Hello " + self.user.text + "!"
 
 
 if __name__ == "__main__":
-    start_gui()
+    TimeSaverApp().run()
