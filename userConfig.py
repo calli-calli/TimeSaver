@@ -13,7 +13,6 @@ import warnings
 from datetime import datetime
 from datetime import timedelta
 
-
 settings_structure = {"last_month": [bool],
                       "all_day": [bool],
                       "start_date": [datetime],
@@ -66,12 +65,34 @@ def get_prev_month_dates(some_day: datetime = datetime.today()) -> dict:
     return {"start_date": start_date, "end_date": end_date}
 
 
+def set_prev_month_dates(options: dict, date: datetime = datetime.today()) -> dict:
+    """sets key 'start_date', 'end_date' to corresponding dates of month that precedes passed argument 'date'"""
+    if "start_date" in options.keys() and "end_date" in options.keys():
+        tmp = get_prev_month_dates(date)
+        options["start_date"] = tmp["start_date"]
+        options["end_date"] = tmp["end_date"]
+    else:
+        raise KeyError
+    return options
+
+
+# temporary until validate has fewer purposes and new function calls are integrated in codebase
 def validate(settings: dict, fill_missing_options=False):
-    """Checks settings for validity. Raises Error if invalid"""
+    """Temporary function. Acomplishes original purpose of wip_validate. See its doc-string for more info"""
+    if "last_month" in settings.keys() and "start_date" in settings.keys() and "end_date" in settings.keys():
+        set_prev_month_dates(settings)
+    is_valid(settings)
+    return wip_validate(settings, fill_missing_options)
+
+
+def wip_validate(settings: dict, add_missing_options):
+    """Checks settings for validity. Makes valid if possible. Raises Error if invalid"""
+    # todo too many purposes
+    add_missing_options = False if add_missing_options is None else True
     error_msg = []
     valid_settings = settings.copy()
     # adds missing options to valid_settings and sets them to default value
-    if fill_missing_options:
+    if add_missing_options:
         for option in settings_structure:
             if option not in settings.keys():
                 valid_settings[option] = _factory_default_settings[option]
@@ -94,9 +115,7 @@ def validate(settings: dict, fill_missing_options=False):
             if not isinstance(pref, bool):
                 error_msg.append(f"{option} must be bool, is: {type(pref)}")
         if option == "start_date" or option == "end_date":
-            if "last_month" in settings.keys() and settings["last_month"] is True:
-                pref = get_prev_month_dates()[option]
-            elif isinstance(pref, str) and len(pref) == 19:
+            if isinstance(pref, str) and len(pref) == 19:
                 pref = datetime.fromisoformat(pref)
             elif isinstance(pref, str) and len(pref) == 6:
                 pref = datetime.strptime(pref, _date_format)
@@ -104,8 +123,31 @@ def validate(settings: dict, fill_missing_options=False):
                 error_msg.append(f"Type error. Type: {type(pref)} Option: {option}, Pref: {pref}")
         valid_settings[option] = pref
     if len(error_msg):
-        raise Exception("\n".join(error_msg))
+        raise Exception("\n" + "\n".join(error_msg))
     return valid_settings
+
+
+def is_valid(options: dict):
+    """Func name is temporary. If valid return True, else throws error"""
+    # todo implement
+    # check validity of  options and preferences individually
+    list(map(_is_individually_valid, options.keys(), options.values()))
+    # check validity of options and preferences in context
+    _is_contextually_valid(options)
+
+
+def _is_individually_valid(opt, pref):
+    # todo implement
+    pass
+
+
+def _is_contextually_valid(options: dict):
+    # todo implement
+    pass
+
+
+def _set_types(options):
+    pass
 
 
 def _dict_to_ini(config_dict):
